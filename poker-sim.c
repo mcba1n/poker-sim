@@ -10,13 +10,10 @@ const int SUIT_CARD_NUM = 13;
 
 struct card* getRandCard();
 struct card* dealHand();
-
 char* getValue(int value);
 char* getSuit(int suit);
-
 int makeCompDecision();
 int makeCompBet();
-
 void createDeck();
 void cardToBoard();
 void printHand(struct card *header);
@@ -29,6 +26,11 @@ void makeFold();
 void raisePotBy(int raise);
 void dealBoard();
 void continueHand();
+int handCompare();
+int valueCompare();
+int handStrength(struct card *header);
+void arraySort(int Array[], int n);
+void linkedListSort(struct card *header, struct card *end);
 
 struct card {
     int value;
@@ -64,7 +66,6 @@ int main() {
     srand(time(NULL));
 
     while (gamed_not_finished) {
-        // Pre-flop:
         Player_One.header = dealHand();
         Player_Two.header = dealHand();
         printf("Player One, your hand is\t");
@@ -72,35 +73,37 @@ int main() {
         handStateOne();
         printf("\nPre-flop is done");
         
-        // Flop:
         continueHand();
         printf("\nFlop is done");
-
-        // 2nd street:
         continueHand();
         printf("\n2nd street is done");
-
-        // Turn:
         continueHand();
         printf("\nTurn is done");
-
-        // River:
         continueHand();
         printf("\nRiver is done");
 
-        // Showdown:
-        printf("\nShowdown is done");
+        if (handCompare() > 0) {
+            Player_One.stack += pot;
+            printf("\nPlayer One wins!");
+        } else if (handCompare() < 0) {
+            Player_Two.stack += pot;
+            printf("\nPlayer Two wins!");
+        } else {
+            Player_One.stack += pot/2;
+            Player_Two.stack += pot/2;
+            printf("\nChop the pot!");
+        }
 
         printf("\nDo you want to play another hand (0=no, 1=yes)?\t");
-        scanf("%i", &gamed_finished);
-        if (!gamed_finished) {
-            free(board_header);
-            free(board_end);
-            free(Player_One.header);
-            free(Player_Two.header);
-            for (int i = 0; i < CARD_NUM; i++) free(deck[i]);
-            done = 0;
-        }
+        scanf("%i", &gamed_not_finished);
+        
+        free(board_header);                                             // Reset hand
+        free(board_end);
+        free(Player_One.header);
+        free(Player_Two.header);
+        for (int i = 0; i < CARD_NUM; i++) free(deck[i]);
+        done = 0;
+        pot = 0;
     }
     printf("\n\n");
     return 0;
@@ -241,7 +244,6 @@ int makeCompBet() {
 
 void cardToBoard() {
     struct card *card = getRandCard();
-
     if (board_header == NULL) { 
         board_header = card;
         board_end = card;
@@ -270,7 +272,6 @@ void createDeck() {
 struct card* getRandCard() {
     struct card *new_card = NULL;
     int card_index;
-
     while (new_card == NULL) {
         card_index = rand() % CARD_NUM;
         new_card = deck[card_index];
@@ -366,7 +367,139 @@ void printBoard() {
     printf("\n");
 }
 
-// analyse current hand of both players, return: 1=player one best hand, 0=equal hand, -1=player two best hand
-int bestHand() {
-    // isRoyalFlush(); etc.
+int handCompare() {
+    int Player_One_hand = handStrength(Player_One.header);
+    int Player_Two_hand = handStrength(Player_Two.header);
+    if (Player_One_hand > Player_Two_hand) {
+        return -1;
+    } else if (Player_Two_hand > Player_One_hand) {
+        return 1;
+    } else {
+        int value = valueCompare();
+        if (value > 0) {
+            return 1;
+        } else if (value < 0) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
 }
+
+int valueCompare() {
+    struct card *temp_one = Player_One.header;
+    struct card *temp_two = Player_Two.header;
+    while (temp_one != NULL && temp_two != NULL) {
+        if (temp_one->value > temp_two->value) {
+            return 1;
+        } else if (temp_two->value > temp_one->value) {
+            return -1;
+        } else {
+            return 0;
+        }
+        temp_one = temp_one->next;
+        temp_two = temp_two->next;
+    }
+}
+
+int handStrength(struct card *header) {
+    int freq[13];
+    int isRoyalFlush, isStraightFlush, isFourKind, 
+        isFullHouse, isFlush, isStraight, isThreeKind,
+        isTwoPair, isPair, isHighCard;
+    struct card *temp = header;
+
+    linkedListSort(header, board_end);
+    isFlush = 1;
+    while(temp != NULL) {
+        if (temp->next != NULL) {
+            if (temp->suit != temp->next->suit) isFlush = 0;
+        }
+        freq[temp->value]++;
+        temp = temp->next;
+    }
+
+    arraySort(freq, SUIT_CARD_NUM);
+    if (header->value - board_end->value == 4) isStraight = 1;
+    else isStraight = 0;
+    if (isStraight && isFlush) isStraightFlush = 1;
+    else isStraightFlush = 0;
+    if (freq[0] == 4 && freq[1] == 1) isFourKind = 1;
+    else isFourKind = 0;
+    if (freq[0] == 3 && freq[1] == 2) isFullHouse = 1;
+    else isFullHouse = 0;
+    if (freq[0] == 3 && freq[1] == 1 && freq[2] == 1) isThreeKind = 1;
+    else isThreeKind = 0;
+    if (freq[0] == 2 && freq[1] == 2 && freq[2] == 1) isTwoPair = 1;
+    else isTwoPair = 0;
+    if (freq[0] == 2 && freq[1] == 1 && freq[2] == 1) isPair = 1;
+    else isPair = 0;
+
+    if (isRoyalFlush) return 1;
+    else if (isStraight) return 2;
+    else if (isFourKind) return 3;
+    else if (isFullHouse) return 4;
+    else if (isFlush) return 5;
+    else if (isStraight) return 6;
+    else if (isThreeKind) return 7;
+    else if (isTwoPair) return 8;
+    else if(isPair) return 9;
+    else return 10;
+}
+
+void arraySort(int Array[], int n) {
+    for (int i = 0; i < n - 1; i++) {
+        int jMin = i;
+        for (int j = i + 1; j < n; j++) {
+            if (Array[jMin] < Array[j]) {
+                jMin = j;
+            }
+        }
+        if (jMin != i) {
+            int temp = Array[jMin];
+            Array[jMin] = Array[i];
+            Array[i] = temp;
+        }
+    }
+}
+
+void linkedListSort(struct card *header, struct card *end) {
+    struct card *curr, *next, *prev, *tmp;
+    end = NULL;
+
+    while(header->next != end) {                            // Sort complete when the second node is marked as the end
+        prev = curr = header;                               // Initialisation for a new iteration
+        next = header->next;
+
+        while(curr != end) {                                // Loop the swap or continue process until the end
+            if(curr->value < next->value) {                 // Decide to swap
+                if(curr == header) {
+                                                            // Swap curr and next nodes
+                    tmp = next -> next;
+                    next->next = curr;
+                    curr->next = tmp;
+
+                    header = next;                          // Set the new header node
+                    prev = next;
+                }
+                else {
+                    tmp = next->next;                       // Swap curr and next nodes
+                    next->next = curr;
+                    curr->next = tmp;
+
+                    prev->next = next;                      // Set the new previous node
+                    prev = next;
+               }
+           }
+           else {
+                prev = curr;                                // Set the new prev node
+                curr = curr->next;                          // Set the new curr node
+           }
+           next = next->next;                               // Traverse to the new next node
+           if(next == end) end = curr;                      // Assume the last node checked is the greatest
+        }
+    }
+}
+
+
+
