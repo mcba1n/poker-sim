@@ -30,7 +30,6 @@ int handCompare();
 int valueCompare();
 int handStrength(struct card *header);
 void arraySort(int Array[], int n);
-void linkedListSort(struct card *header, struct card *end);
 
 struct card {
     int value;
@@ -63,25 +62,27 @@ int main() {
     Player_Two.stack = 10000;
     strcpy(Player_One.name, "Player One");
     strcpy(Player_Two.name, "Player Two");
-    srand(time(NULL));
+    srand(time(NULL));      // Prevents pseudo-random numbers of rand()
 
     while (gamed_not_finished) {
+        //Pre-flop
         Player_One.header = dealHand();
         Player_Two.header = dealHand();
         printf("Player One, your hand is\t");
         printHand(Player_One.header);
         handStateOne();
-        printf("\nPre-flop is done");
+        printf("\nPre-flop is done\n\n");
         
         continueHand();
-        printf("\nFlop is done");
+        printf("\nFlop is done\n\n");
         continueHand();
-        printf("\n2nd street is done");
+        printf("\n2nd street is done\n\n");
         continueHand();
-        printf("\nTurn is done");
+        printf("\nTurn is done\n\n");
         continueHand();
-        printf("\nRiver is done");
+        printf("\nRiver is done\n\n");
 
+        // Showdown
         int handCmp = handCompare();
         if (handCmp > 0) {
             Player_One.stack += pot;
@@ -97,8 +98,11 @@ int main() {
             printf("\nChop the pot!");
         }
 
-        printf("\nDo you want to play another hand (0=no, 1=yes)?\t");
+        printf("\n\nDo you want to play another hand (0=no, 1=yes)?\t");
         scanf("%i", &gamed_not_finished);
+        printf("\n\n");
+
+        // Clear memory and reset variables
         for (int i = 0; i < CARD_NUM; i++) free(deck[i]);
         done = 0;
         pot = 0;
@@ -116,6 +120,10 @@ void continueHand() {
     }
 }
 
+/*
+    handStateOne(): This is the 1st possible state of a hand where a player
+    may bet, check, or fold.
+*/
 void handStateOne() {
     int decision;
     if (Player == &Player_One) {
@@ -125,29 +133,33 @@ void handStateOne() {
             int bet_size;
             printf("How much do you want to bet?\t");
             scanf("%i", &bet_size);
-            printf("%s bets %i chips\n", Player->name, bet_size);
+            printf("%s bets %i chips", Player->name, bet_size);
             raisePotBy(bet_size);
         } else if (decision < 0) {
             makeFold();
         } else {
-            printf("\n%s has checked", Player->name);
+            printf("%s has checked", Player->name);
             makeCheck();
         }
     } else if (Player == &Player_Two) {
         decision = makeCompDecision();
         if (decision > 0) {
             int bet_size = makeCompBet();
-            printf("%s bets %i chips\n", Player->name, bet_size);
+            printf("%s bets %i chips", Player->name, bet_size);
             raisePotBy(bet_size);
         } else if (decision < 0) {
             makeFold();
         } else {
-            printf("\n%s has checked", Player->name);
+            printf("%s has checked", Player->name);
             makeCheck();
         }
     }
 }
 
+/*
+    handStateTwo(): This is the 2nd possible state of a hand where a player
+    may raise, call, or fold.
+*/
 void handStateTwo(int current_raise) {
     int decision;
     if (Player == &Player_One) {
@@ -157,35 +169,38 @@ void handStateTwo(int current_raise) {
             int raise_size;
             printf("What do you want to raise to?\t");
             scanf("%i", &raise_size);
-            printf("%s raises by %i chips\n", Player->name, raise_size);
+            printf("%s raises by %i chips", Player->name, raise_size);
             raisePotBy(raise_size);
         } else if (decision < 0) {
             makeFold();
         } else {
             Player->stack -= current_raise;
             pot += current_raise;
-            printf("\n%s has called", Player->name);
-            printf("\nCurrent pot is %i, %s has %i chips\n", pot, Player->name, Player->stack);
+            printf("%s has called", Player->name);
+            printf("Current pot is %i, %s has %i chips", pot, Player->name, Player->stack);
             makeCheck();
         }
     } else if (Player == &Player_Two) {
         decision = makeCompDecision();
         if (decision > 0) {
             int raise_size = makeCompBet();
-            printf("%s raises by %i chips\n", Player->name, raise_size);
+            printf("%s raises by %i chips", Player->name, raise_size);
             raisePotBy(raise_size);
         } else if (decision < 0) {
             makeFold();
         } else {
             Player->stack -= current_raise;
             pot += current_raise;
-            printf("\n%s has called", Player->name);
-            printf("\nCurrent pot is %i, %s has %i chips\n", pot, Player->name, Player->stack);
+            printf("%s has called", Player->name);
+            printf("\nCurrent pot is %i, %s has %i chips", pot, Player->name, Player->stack);
             makeCheck();
         }
     }
 }
 
+/*
+    raisePotBy(): Adds chips in the pot. This is used for betting and raising.
+*/
 void raisePotBy(int raise) {
     if (raise > Player->stack) {
         printf("\nYou do not have enough chips");
@@ -198,6 +213,9 @@ void raisePotBy(int raise) {
     }
 }
 
+/*
+    changePlayer(): Changes which player player takes the next action.
+*/
 void changePlayer() {
     if (Player == &Player_One) {
         Player = &Player_Two;
@@ -208,6 +226,9 @@ void changePlayer() {
     }
 }
 
+/*
+    makeCheck(): Check action by player. This is similar to a call action.
+*/
 void makeCheck() {
     if (Player == Last_Player) {
         changePlayer();
@@ -217,6 +238,9 @@ void makeCheck() {
     }
 }
 
+/*
+    makeFold(): Fold action by player.
+*/
 void makeFold() {
     printf("\n%s has folded... ", Player->name);
     changePlayer();
@@ -227,20 +251,17 @@ void makeFold() {
 }
 
 int makeCompDecision() {
-    // make calculations on current situation based on EV
-    // 1. find distribution of hands player one may have
-    // 2. narrow it using a specified range --- how?
-    // 3. *randomly* choose one of these probabilities to calculate an EV
-    // 4. make the decision ( 1=raise, -1=fold, 0=call )
     return 0;
 }
 
 int makeCompBet() {
-    // analyse current pot, bet size, and then compare with Player Two's EV
-    // 10% above = raise, 10% below = fold, between these = call
     return 1000;
 }
 
+/*
+    createDeck(): Creates the node for each card in memory, then adds
+    them to an array which represents the deck.
+*/
 void createDeck() {
     for (int i = 0; i < SUIT_NUM; i++) {
         for (int j = 0; j < SUIT_CARD_NUM; j++) {
@@ -250,23 +271,31 @@ void createDeck() {
             } else {
                 card->value = j + 1;
                 card->suit = i + 1;
-                deck[i*SUIT_CARD_NUM + j] = card;
+                deck[i*SUIT_CARD_NUM + j] = card;       // Add card to deck in order
             }
         }
     }
 }
 
+/*
+    getRandCard(): Retrieves a card at *random* index of the instantiated deck.
+*/
 struct card* getRandCard() {
     struct card *new_card = NULL;
     int card_index;
+
     while (new_card == NULL) {
         card_index = rand() % CARD_NUM;
         new_card = deck[card_index];
     }
-    deck[card_index] = NULL;
+    deck[card_index] = NULL;        // Remove card from deck
     return new_card;
 }
 
+/*
+    dealHand(): Deals a hand of two cards to each player in the form of
+    a linked list.
+*/
 struct card* dealHand() {
     struct card *player_header = NULL;
     struct card *card_one = getRandCard();
@@ -279,11 +308,15 @@ struct card* dealHand() {
     return player_header;
 }
 
+/*
+    dealBoard(): Deals a card to the linked list of the board.
+*/
 void dealBoard() {
     if (board_header == NULL) {
         board_header = getRandCard();
         board_end = board_header;
 
+        // Append player hands to the beginning of the linked list
         Player_One.header->next->next = board_header;
         Player_Two.header->next->next = board_header;
     } else {
@@ -293,6 +326,9 @@ void dealBoard() {
     board_end->next = NULL;
 }
 
+/*
+    getValue(): Converts numerical value for card rank to its representing string.
+*/
 char* getValue(int value) {
     switch (value) {
         case 1:
@@ -325,6 +361,10 @@ char* getValue(int value) {
     return NULL;
 }
 
+
+/*
+    getSuit(): Converts numerical value for suit to its representing string.
+*/
 char* getSuit(int suit) {
     switch (suit) {
         case 1:
@@ -339,6 +379,10 @@ char* getSuit(int suit) {
     return NULL;
 }
 
+/*
+    printHand(): Prints the hand for a given player. It takes the header of a
+    player's linked list as an argument.
+*/
 void printHand(struct card *header) {
     struct card *temp = header;
     printf("<%s><%s>\t", getValue(temp->value), getSuit(temp->suit));
@@ -346,6 +390,9 @@ void printHand(struct card *header) {
     printf("\n");
 }
 
+/*
+    printBoard(): Prints the cards that have currently been dealt.
+*/
 void printBoard() {
     struct card *temp = board_header;
     if (temp == NULL) {
@@ -359,37 +406,40 @@ void printBoard() {
     printf("\n");
 }
 
+/*
+    handCompare(): Deligates the processes for evaluating the best hand at showdown.
+*/
 int handCompare() {
     int Player_One_hand = handStrength(Player_One.header);
     int Player_Two_hand = handStrength(Player_Two.header);
     printf("\nPlayer One has a %s, and Player Two has a %s", getHand(Player_One_hand), getHand(Player_Two_hand));
+    
     if (Player_One_hand > Player_Two_hand) {
         return -1;
     } else if (Player_Two_hand > Player_One_hand) {
         return 1;
     } else {
+        // Equal hand strengths
         int value = valueCompare();
-        if (value > 0) {
-            return 1;
-        } else if (value < 0) {
-            return -1;
-        } else {
-            return 0;
-        }
+        if (value > 0) return 1;
+        else if (value < 0) return -1;
+        else return 0;
     }
 }
 
+
+/*
+    valueCompare(): When handStrength() returns the same hand strength for the players,
+    we must then compare high cards of the hands.
+*/
 int valueCompare() {
     struct card *temp_one = Player_One.header;
     struct card *temp_two = Player_Two.header;
+
     while (temp_one != NULL && temp_two != NULL) {
-        if (temp_one->value > temp_two->value) {
-            return 1;
-        } else if (temp_two->value > temp_one->value) {
-            return -1;
-        } else {
-            return 0;
-        }
+        if (temp_one->value > temp_two->value) return 1;
+        else if (temp_two->value > temp_one->value) return -1;
+        else return 0;
         temp_one = temp_one->next;
         temp_two = temp_two->next;
     }
@@ -397,8 +447,12 @@ int valueCompare() {
     return 0;
 }
 
+/*
+    handStrength(): Returns an integer representing hand strength. Lower numbers signify 
+    a stronger hand.
+*/
 int handStrength(struct card *header) {
-    int freq[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int freq[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};     // Histogram of card frequencies
     int isRoyalFlush, isStraightFlush, isFourKind, 
         isFullHouse, isFlush, isStraight, isThreeKind,
         isTwoPair, isPair, isHighCard;
@@ -406,6 +460,7 @@ int handStrength(struct card *header) {
 
     isFlush = 1;
     while(temp != NULL) {
+        // If a suit does not equal its neighbour, it is not a Flush
         if (temp->next != NULL)
             if (temp->suit != temp->next->suit) isFlush = 0;
 
@@ -416,6 +471,7 @@ int handStrength(struct card *header) {
     if (isFlush && freq[0] && freq[9] && freq[10] && freq[11] && freq[12]) isRoyalFlush = 1;
     else isRoyalFlush = 0;
 
+    // Find isStraight by summing five histogram frequencies at a time and then shift right
     isStraight = 0;
     for (int i = 0; i < SUIT_CARD_NUM - 5; i++) {
         int sum = 0;
@@ -428,6 +484,7 @@ int handStrength(struct card *header) {
             break;
     }
 
+    // Check the upper values of the histogram to determine hand types
     arraySort(freq, SUIT_CARD_NUM);
     if (isStraight && isFlush) isStraightFlush = 1;
     else isStraightFlush = 0;
@@ -442,6 +499,7 @@ int handStrength(struct card *header) {
     if (freq[0] == 2 && freq[1] == 1 && freq[2] == 1) isPair = 1;
     else isPair = 0;
 
+    // Return the numerical value of hand strength
     if (isRoyalFlush) return 1;
     else if (isStraightFlush) return 2;
     else if (isFourKind) return 3;
@@ -454,6 +512,9 @@ int handStrength(struct card *header) {
     else return 10;
 }
 
+/*
+    getHand(): Converts numerical hand strength integer to its representing string.
+*/
 char* getHand(int hand_strength) {
     switch (hand_strength) {
         case 1:
@@ -480,6 +541,11 @@ char* getHand(int hand_strength) {
     return NULL;
 }
 
+
+/*
+    arraySort(): Uses selection sort to re-order the values of an array
+    in descending order from left.
+*/
 void arraySort(int Array[], int n) {
     for (int i = 0; i < n - 1; i++) {
         int jMin = i;
