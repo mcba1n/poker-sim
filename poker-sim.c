@@ -7,6 +7,7 @@
 const int CARD_NUM = 52;
 const int SUIT_NUM = 4;
 const int SUIT_CARD_NUM = 13;
+const int BIG_BLIND = 50;
 
 struct card* getRandCard();
 struct card* dealHand();
@@ -26,15 +27,16 @@ void dealBoard();
 void arraySort(int Array[], int n);
 void updateHandData(int n);
 void writeHandData();
-int makeCompDecision();
-int makeCompBet();
 int handCompare();
 int valueCompare();
 int handStrength(struct card *header);
 int multiplyPrimes(struct card *header);
 int suitCount(struct card *header);
 int getPrime(int value);
-
+int decideBetSize();
+int stateOneDecision();
+int stateTwoDecision(int pot_size, int call_size);
+float getProbabilityFromData(int prime_prod, int suit_num, int stage);
 
 struct card {
     int value;
@@ -59,7 +61,7 @@ struct player *Last_Player = &Player_Two;
 
 FILE *fptr;
 
-int hand_data[9];
+int hand_data[9], n;
 int pot = 0, done = 0, gamed_not_finished = 1;
 
 int main() {
@@ -76,43 +78,47 @@ int main() {
 
     while (gamed_not_finished) {
         // Pre-flop
+        n = 0;
         Player_One.header = dealHand();
         Player_Two.header = dealHand();
         printf("Player One, your hand is\t");
         printHand(Player_One.header);
         handStateOne();
-        updateHandData(0);
+        updateHandData(n);
         printf("\nPre-flop is done\n\n");
         
         // Flop
         if (!done) {
+            n = 1;
             dealBoard();
             dealBoard();
             dealBoard();
             printf("\nThe board is now\t");
             printBoard();
             handStateOne();
-            updateHandData(1);
+            updateHandData(n);
             printf("\nFlop is done\n\n");
         }
 
         // Turn
         if (!done) {
+            n = 2;
             dealBoard();
             printf("\nThe board is now\t");
             printBoard();
             handStateOne();
-            updateHandData(2);
+            updateHandData(n);
             printf("\nTurn is done\n\n");
         }
 
         // River
         if (!done) {
+            n = 3;
             dealBoard();
             printf("\nThe board is now\t");
             printBoard();
             handStateOne();
-            updateHandData(3);
+            updateHandData(n);
             printf("\nRiver is done\n\n");
         }
 
@@ -197,6 +203,25 @@ void writeHandData() {
     fprintf(fptr, "%i\n", hand_data[8]);
 }
 
+float getProbabilityFromData(int prime_prod, int suit_num, int stage) {
+    // Search for results with the needles at nth stage of hand
+    int numMatches, numMatchWins;
+    int sim_data[9];
+    while (!feof(fptr)) {
+        fscanf(fptr, "%i,%i,%i,%i,%i,%i,%i,%i,%i", &sim_data[0], &sim_data[1], &sim_data[2], 
+                                                    &sim_data[3], &sim_data[4], &sim_data[5],
+                                                    &sim_data[6], &sim_data[7], &sim_data[8]);
+
+        if (sim_data[stage] == prime_prod && sim_data[stage + 1] == suit_num) {
+            numMatches++;
+            if (sim_data[8])
+                numMatchWins++;
+        }
+    }
+    rewind(fptr);
+    return numMatchWins / numMatches;
+}
+
 int getPrime(int value) {
     switch (value) {
         case 1:
@@ -251,9 +276,9 @@ void handStateOne() {
             makeCheck();
         }
     } else if (Player == &Player_Two) {
-        decision = makeCompDecision();
+        decision = stateOneDecision();
         if (decision > 0) {
-            int bet_size = makeCompBet();
+            int bet_size = decideBetSize();
             printf("%s bets %i chips", Player->name, bet_size);
             raisePotBy(bet_size);
         } else if (decision < 0) {
@@ -290,9 +315,9 @@ void handStateTwo(int current_raise) {
             makeCheck();
         }
     } else if (Player == &Player_Two) {
-        decision = makeCompDecision();
+        decision = stateTwoDecision(pot, current_raise);
         if (decision > 0) {
-            int raise_size = makeCompBet();
+            int raise_size = decideBetSize();
             printf("%s raises by %i chips", Player->name, raise_size);
             raisePotBy(raise_size);
         } else if (decision < 0) {
@@ -361,12 +386,38 @@ void makeFold() {
     changePlayer();
 }
 
-int makeCompDecision() {
-    return 0;
+int stateOneDecision() {
+    int prime = multiplyPrimes(Player_Two.header);
+    int suits = suitCount(Player_Two.header);
+    float pr = getProbabilityFromData(prime, suits, n);
+
+    if (pr == 0) {
+        // There is no data
+        return rand() / 3 - 1;
+    } else {
+        if (pr >= 0.3) return 1;
+        else if (pr > 0.1 && pr < 0.3) return 0;
+        else return -1;
+    }
 }
 
-int makeCompBet() {
-    return 1000;
+int stateTwoDecision(int pot_size, int call_size) {
+    int prime = multiplyPrimes(Player_Two.header);
+    int suits = suitCount(Player_Two.header);
+    float pr = getProbabilityFromData(prime, suits, n);
+
+    if (pr == 0) {
+        // There is no data
+        return rand() / 3 - 1;
+    } else {
+        float EV = pr*pot_size - (1 - pr)*call_size;       // EV = WP - LC
+        if (EV > 0) return 0;
+        else return -1;
+    }
+}
+
+int decideBetSize() {
+    return 3*BIG_BLIND;
 }
 
 /*
