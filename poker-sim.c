@@ -13,8 +13,6 @@ struct card* dealHand();
 char* getValue(int value);
 char* getSuit(int suit);
 char* getHand(int hand_strength);
-int makeCompDecision();
-int makeCompBet();
 void createDeck();
 void printHand(struct card *header);
 void printBoard();
@@ -25,11 +23,18 @@ void makeCheck();
 void makeFold();
 void raisePotBy(int raise);
 void dealBoard();
-void continueHand();
+void arraySort(int Array[], int n);
+void updateHandData(int n);
+void writeHandData();
+int makeCompDecision();
+int makeCompBet();
 int handCompare();
 int valueCompare();
 int handStrength(struct card *header);
-void arraySort(int Array[], int n);
+int multiplyPrimes(struct card *header);
+int suitCount(struct card *header);
+int getPrime(int value);
+
 
 struct card {
     int value;
@@ -44,16 +49,17 @@ struct player {
 };
 
 struct card *deck[CARD_NUM];
-
 struct card *board_header = NULL;
 struct card *board_end = NULL;
 
 struct player Player_One;
 struct player Player_Two;
-
 struct player *Player = &Player_One;
 struct player *Last_Player = &Player_Two;
 
+FILE *fptr;
+
+int hand_data[9];
 int pot = 0, done = 0, gamed_not_finished = 1;
 
 int main() {
@@ -64,23 +70,51 @@ int main() {
     strcpy(Player_Two.name, "Player Two");
     srand(time(NULL));      // Prevents pseudo-random numbers of rand()
 
+    fptr = fopen("/Users/brendonmcbain/Documents/GitHub/poker-sim/simulation_data.txt", "a+");      // File open for reading and appending
+    if (fptr == NULL) 
+		printf("Error, can't open the input file");
+
     while (gamed_not_finished) {
-        //Pre-flop
+        // Pre-flop
         Player_One.header = dealHand();
         Player_Two.header = dealHand();
         printf("Player One, your hand is\t");
         printHand(Player_One.header);
         handStateOne();
+        updateHandData(0);
         printf("\nPre-flop is done\n\n");
         
-        continueHand();
-        printf("\nFlop is done\n\n");
-        continueHand();
-        printf("\n2nd street is done\n\n");
-        continueHand();
-        printf("\nTurn is done\n\n");
-        continueHand();
-        printf("\nRiver is done\n\n");
+        // Flop
+        if (!done) {
+            dealBoard();
+            dealBoard();
+            dealBoard();
+            printf("\nThe board is now\t");
+            printBoard();
+            handStateOne();
+            updateHandData(1);
+            printf("\nFlop is done\n\n");
+        }
+
+        // Turn
+        if (!done) {
+            dealBoard();
+            printf("\nThe board is now\t");
+            printBoard();
+            handStateOne();
+            updateHandData(2);
+            printf("\nTurn is done\n\n");
+        }
+
+        // River
+        if (!done) {
+            dealBoard();
+            printf("\nThe board is now\t");
+            printBoard();
+            handStateOne();
+            updateHandData(3);
+            printf("\nRiver is done\n\n");
+        }
 
         // Showdown
         int handCmp = handCompare();
@@ -88,15 +122,19 @@ int main() {
             Player_One.stack += pot;
             printf("\nPlayer One wins with\t");
             printHand(Player_One.header);
+            hand_data[8] = 0;
         } else if (handCmp < 0) {
             Player_Two.stack += pot;
             printf("\nPlayer Two wins with\t");
             printHand(Player_Two.header);
+            hand_data[8] = 1;
         } else {
             Player_One.stack += pot/2;
             Player_Two.stack += pot/2;
             printf("\nChop the pot!");
+            hand_data[8] = 1;
         }
+        writeHandData();
 
         printf("\n\nDo you want to play another hand (0=no, 1=yes)?\t");
         scanf("%i", &gamed_not_finished);
@@ -108,16 +146,87 @@ int main() {
         pot = 0;
     }
     printf("\n\n");
+    fclose(fptr);
     return 0;
 }
 
-void continueHand() {
-    if (!done) {
-        dealBoard();
-        printf("\nThe board is now\t");
-        printBoard();
-        handStateOne();
+int multiplyPrimes(struct card *header) {
+    struct card *temp = header;
+    int product = 1;
+    while (temp != NULL) {
+        product *= getPrime(temp->value);
+        temp = temp->next;
     }
+    return product;
+}
+
+int suitCount(struct card *header) {
+    struct card *temp = header;
+    int suit_freq[4] = {0, 0, 0, 0};
+
+    while (temp != NULL) {
+        suit_freq[temp->suit - 1]++;
+        temp = temp->next;
+    }
+
+    int max_suit = 0;
+    for (int i = 0; i < SUIT_NUM; i++)
+        if (suit_freq[i] > max_suit) max_suit = suit_freq[i];
+
+    return max_suit;
+}
+
+/*
+    updateHandData(): Updates hand data of the computer at the nth stage of hand
+*/
+void updateHandData(int n) {
+    if (n > 3) return;
+
+    int handProduct = multiplyPrimes(Player_Two.header);
+    int suitNum = suitCount(Player_Two.header);
+
+    // Array index using rule i_n = 2n + 1
+    hand_data[2*n + 1] = handProduct;
+    hand_data[2*n + 2] = suitNum;
+}
+
+void writeHandData() {
+    for (int i = 0; i < 8; i++) {
+        fprintf(fptr, "%i,", hand_data[i]);
+    }
+    fprintf(fptr, "%i\n", hand_data[8]);
+}
+
+int getPrime(int value) {
+    switch (value) {
+        case 1:
+            return 41;
+        case 2:
+            return 2;
+        case 3:
+            return 3;
+        case 4:
+            return 5;
+        case 5:
+            return 7;
+        case 6:
+            return 11;
+        case 7:
+            return 13;
+        case 8:
+            return 17;
+        case 9:
+            return 19;
+        case 10:
+            return 23;
+        case 11:
+            return 29;
+        case 12:
+            return 31;
+        case 13:
+            return 37;
+    }
+    return 0;
 }
 
 /*
@@ -204,6 +313,7 @@ void handStateTwo(int current_raise) {
 void raisePotBy(int raise) {
     if (raise > Player->stack) {
         printf("\nYou do not have enough chips");
+        // Now what?
     } else {
         pot += raise;
         Player->stack -= raise;
@@ -246,6 +356,7 @@ void makeFold() {
     changePlayer();
     Player->stack += pot;
     pot = 0;
+    done = 0;
     printf("%s wins!", Player->name);
     changePlayer();
 }
@@ -427,7 +538,6 @@ int handCompare() {
     }
 }
 
-
 /*
     valueCompare(): When handStrength() returns the same hand strength for the players,
     we must then compare high cards of the hands.
@@ -476,12 +586,12 @@ int handStrength(struct card *header) {
     for (int i = 0; i < SUIT_CARD_NUM - 5; i++) {
         int sum = 0;
 
-        for (int j = 0; j < 5; j++)
-            sum += freq[i + j];
+        for (int j = 0; j < 5; j++) sum += freq[i + j];
 
-        if (sum == 5)
+        if (sum == 5) {
             isStraight = 1;
             break;
+        }
     }
 
     // Check the upper values of the histogram to determine hand types
@@ -540,7 +650,6 @@ char* getHand(int hand_strength) {
     }
     return NULL;
 }
-
 
 /*
     arraySort(): Uses selection sort to re-order the values of an array
